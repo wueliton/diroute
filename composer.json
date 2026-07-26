@@ -1,0 +1,24 @@
+{
+  "name": "paulowueliton/php-ast",
+  "description": "AST e compilador de templates inspirados em sintaxe de componentes para HTML em PHP.",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": "^8.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "Diroute\\": "diroute/src/",
+      "App\\": "src/"
+    }
+  },
+  "bin": [
+    "diroute/bin/diroute"
+  ],
+  "scripts": {
+    "diroute": "diroute"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9"
+  }
+}

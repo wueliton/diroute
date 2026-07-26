@@ -1,0 +1,19 @@
+{
+  "php.validate.enable": true,
+  "php.validate.run": "onType",
+  "[php]": {
+    "editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
+    "editor.formatOnSave": true
+  },
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": false,
+    "strings": false
+  },
+  "intelephense.format.enable": true,
+  "editor.suggestOnTriggerCharacters": true,
+  "editor.parameterHints.enabled": true,
+  "editor.wordBasedSuggestions": "matchingDocuments",
+  "editor.snippetSuggestions": "inline",
+  "editor.inlineSuggest.enabled": true
+}

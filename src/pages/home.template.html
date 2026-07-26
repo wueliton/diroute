@@ -1,0 +1,10 @@
+<main-layout>
+  Olá @if(false) { <span>Example</span> } @else {
+  <span>Example 2</span>
+  {{$userName}} } @for($metrics as $metric) {
+  <div>
+    <h2>{{$metric['title']}}</h2>
+    <p>{{$metric['value']}}</p>
+  </div>
+  } {{$title}}
+</main-layout>

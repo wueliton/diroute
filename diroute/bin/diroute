@@ -1,0 +1,28 @@
+#!/usr/bin/env php
+<?php
+
+require __DIR__ . '/../../vendor/autoload.php';
+
+use Diroute\Core\App;
+use Diroute\CLI\DevWatcher;
+
+$command = $argv[1] ?? "dev";
+
+if ($command === 'dev') {
+    $port = 8000;
+    $dirouteDir = __DIR__ . '/../src';
+    $publicDir = __DIR__ . '/../../public';
+    $appDir = __DIR__ . '/../../src';
+
+    set_time_limit(0);
+
+    $serverCmd = sprintf('php -S localhost:%d -t %s', $port, escapeshellarg($publicDir));
+    $serverProcess = proc_open($serverCmd, [], $pipes);
+
+    echo "🚀 Servidor PHP iniciado em http://localhost:{$port}\n";
+
+    $app = new App(dirname(__DIR__));
+    $watcher = new DevWatcher([$appDir, $dirouteDir]);
+
+    $watcher->watch();
+}
