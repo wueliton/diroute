@@ -3,12 +3,13 @@
 namespace Diroute\Compiler\Parser\Node;
 
 use Diroute\Compiler\Contract\NodeInterface;
+use Diroute\Compiler\Parser\Node\AttributeNode;
 
 class ComponentNode implements NodeInterface
 {
     /**
      * @param string $selector Nome do componente (ex: "app-button" ou "x-button")
-     * @param array<string, string> $props Propriedades passadas no componente
+     * @param AttributeNode[] $props Propriedades passadas no componente
      * @param NodeInterface[] $children Slot padrão / Conteúdo interno do componente
      */
     public function __construct(

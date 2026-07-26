@@ -7,10 +7,9 @@ class DirouteTemplate_564c9311830e43ce4969eec309f83372 extends AbstractCompiledT
     public function display(array $context): void
     {
         extract($context, EXTR_SKIP); ?>
-        <?php echo $componentRenderer->render('main-layout', array (
-), function() use ($context) {extract($context, EXTR_SKIP); ?>
+        <?php echo $componentRenderer->render('main-layout', ['title' => 'Home Diroute Exemplo 123 ' . htmlspecialchars($notifications), '
+  disabled' => 1, ' example' => 'Example 123'], function() use ($context) {extract($context, EXTR_SKIP); ?>
 
-  Olá 
   <span>Example 2</span>
   <?php echo $userName; ?> <?php foreach ($metrics as $metric): ?>
 

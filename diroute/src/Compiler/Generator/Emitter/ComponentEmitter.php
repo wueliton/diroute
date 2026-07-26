@@ -16,10 +16,16 @@ class ComponentEmitter implements NodeEmitterInterface
         }
 
         $selector = \addslashes($node->selector);
-        $propsExport = \var_export($node->props, true);
+        $propsExport = [];
+
+        foreach ($node->props as $attr) {
+            $propsExport[] = "'{$attr->name}' => {$attr->value}";
+        }
+
+        $propsArrayString = '[' . implode(', ', $propsExport) . ']';
 
         // Emite a chamada para o ComponentSSRRenderer injetando a closure para o Slot/Children
-        $buffer->write("<?php echo \$componentRenderer->render('{$selector}', {$propsExport}, function() use (\$context) {");
+        $buffer->write("<?php echo \$componentRenderer->render('{$selector}', {$propsArrayString}, function() use (\$context) {");
         $buffer->writeLine("extract(\$context, EXTR_SKIP); ?>");
 
         // Processa os filhos do nó (Slot)

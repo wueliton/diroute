@@ -5,6 +5,7 @@ namespace Diroute\Compiler\Parser;
 use Diroute\Compiler\Contract\NodeInterface;
 use Diroute\Compiler\Lexer\Token;
 use Diroute\Compiler\Lexer\TokenType;
+use Diroute\Compiler\Parser\Node\AttributeNode;
 use Diroute\Compiler\Parser\Node\ComponentNode;
 use Diroute\Compiler\Parser\Node\DirectiveNode;
 use Diroute\Compiler\Parser\Node\RootNode;
@@ -86,9 +87,12 @@ class Parser
     {
         $selector = $token->value;
 
+        $this->advance();
+
         $props = [];
 
         if (!$this->isEOF() && $this->currentToken()->type === TokenType::T_COMPONENT_PROPS) {
+            $props = $this->parseComponentProps();
             $this->advance();
         }
 
@@ -99,6 +103,121 @@ class Parser
         }
 
         return new ComponentNode($selector, $props, $children, $token->line, $token->column);
+    }
+
+    private function parseComponentProps(): array
+    {
+        $token = $this->currentToken();
+        $rawValue = trim($token->value);
+
+        if (empty($rawValue)) {
+            return [];
+        }
+
+        $attributes = [];
+        $length = strlen($rawValue);
+        $cursor = 0;
+
+        while ($cursor < $length) {
+            $nameStart = $cursor;
+
+            while ($cursor < $length && $rawValue[$cursor] <= ' ') {
+                $cursor++;
+            }
+
+            while ($cursor < $length && $rawValue[$cursor] > ' ' && $rawValue[$cursor] !== '=') {
+                $cursor++;
+            }
+
+            $propName = substr($rawValue, $nameStart, $cursor - $nameStart);
+
+            if ($cursor >= $length) {
+                break;
+            }
+
+            $cursor++;
+            $nextChar = $rawValue[$cursor];
+            $propValue = true;
+
+            if ($nextChar === '"' || $nextChar === "'") {
+                $quoteProp = $nextChar;
+                $cursor++;
+                $valueStart = $cursor;
+
+                while ($cursor < $length && $rawValue[$cursor] !== $quoteProp) {
+                    $cursor++;
+                }
+
+                $propStr = substr($rawValue, $valueStart, $cursor - $valueStart);
+                $propValue = $this->getAttributeValue($propStr);
+            }
+
+            $isBoolean = empty($propValue);
+            $isBinding = (substr($propName, 0, 1) === '[' && substr($propName, 0, -1) == ']') || str_contains($propValue, "{{");
+
+            $attributes[] = new AttributeNode($propName, $propValue, $isBoolean, $isBinding);
+            $cursor++;
+        }
+
+        return $attributes;
+    }
+
+    private function getAttributeValue(string $value)
+    {
+        if (strpos($value, '{{') === false) {
+            return var_export($value, true);
+        }
+
+        $length = strlen($value);
+        $cursor = 0;
+
+        $parts = [];
+        $buffer = '';
+
+        while ($cursor < $length) {
+            if (
+                $value[$cursor] === '{'
+                && $cursor + 1 < $length
+                && $value[$cursor + 1] === '{'
+            ) {
+                if ($buffer !== '') {
+                    $parts[] = var_export($buffer, true);
+                    $buffer = '';
+                }
+
+                $cursor += 2;
+                $expression = '';
+
+                while (
+                    $cursor < $length
+                    && !(
+                        $value[$cursor] === '}'
+                        && $cursor + 1 < $length
+                        && $value[$cursor + 1] === '}'
+                    )
+                ) {
+                    $expression .= $value[$cursor];
+                    $cursor++;
+                }
+
+                $cursor += 2;
+                $parts[] = 'htmlspecialchars(' . trim($expression) . ')';
+                continue;
+            }
+
+            $buffer .= $value[$cursor];
+            $cursor++;
+        }
+
+        if ($buffer !== '') {
+            $parts[] = var_export($buffer, true);
+        }
+
+        if (count($parts) === 1) {
+            return $parts[0];
+        }
+
+        return implode(' . ', $parts);
     }
 
     private function parseComponentChildren(): array
