@@ -8,9 +8,11 @@ use Diroute\Compiler\Lexer\TokenType;
 use Diroute\Compiler\Parser\Node\AttributeNode;
 use Diroute\Compiler\Parser\Node\ComponentNode;
 use Diroute\Compiler\Parser\Node\DirectiveNode;
+use Diroute\Compiler\Parser\Node\ElementNode;
 use Diroute\Compiler\Parser\Node\RootNode;
 use Diroute\Compiler\Parser\Node\TextNode;
 use Diroute\Compiler\Parser\Registry\DirectiveRegistry;
+use Diroute\Http\Registry\ComponentRegistry;
 use RuntimeException;
 
 class Parser
@@ -21,7 +23,8 @@ class Parser
     private array $tokens = [];
 
     public function __construct(
-        private readonly DirectiveRegistry $registry
+        private readonly DirectiveRegistry $registry,
+        private readonly ComponentRegistry $componentRegistry,
     ) {}
 
     public function parse(array $tokens): AST
@@ -33,7 +36,6 @@ class Parser
         while (!$this->isEOF()) {
             $node = $this->parseNode();
 
-            // Descarta nós de texto contendo apenas espaços em branco no nível raiz
             if ($node instanceof TextNode && $node->isRawHtml && \trim($node->content) === '') {
                 continue;
             }
@@ -69,7 +71,6 @@ class Parser
                 return $this->parseDirective();
             }
 
-            // Caso seja uma diretiva não registrada (ex: @twitter), faz fallback para texto plano
             $this->advance();
             return $this->parseTextNode($token, isRawHtml: true, prefix: '@');
         }
@@ -78,31 +79,43 @@ class Parser
             return $this->parseComponent($token);
         }
 
-        // Avança o cursor caso encontre tokens estruturais soltos ({ ou })
         $this->advance();
         return null;
     }
 
-    private function parseComponent(Token $token): ComponentNode
+    private function parseComponent(Token $token): ComponentNode|ElementNode
     {
         $selector = $token->value;
 
-        $this->advance();
-
         $props = [];
+
+        $this->advance();
 
         if (!$this->isEOF() && $this->currentToken()->type === TokenType::T_COMPONENT_PROPS) {
             $props = $this->parseComponentProps();
             $this->advance();
         }
 
+        $this->skipIgnorableTokens();
+
         $children = [];
         if (!$this->isEOF() && $this->currentToken()->type !== TokenType::T_COMPONENT_CLOSE) {
-            $this->advance();
             $children = $this->parseComponentChildren();
         }
 
-        return new ComponentNode($selector, $props, $children, $token->line, $token->column);
+        $selfClose = $this->currentToken()->type === TokenType::T_COMPONENT_SELF_CLOSE;
+
+        if ($selfClose) {
+            $this->advance();
+        }
+
+        if ($this->componentRegistry->has($selector)) {
+            return new ComponentNode($selector, $props, $children, $token->line, $token->column);
+        }
+
+        $node = new ElementNode($selector, $props, $children, $selfClose, $token->line, $token->column);
+
+        return $node;
     }
 
     private function parseComponentProps(): array
@@ -137,6 +150,7 @@ class Parser
 
             $cursor++;
             $nextChar = $rawValue[$cursor];
+            $propValueRaw = true;
             $propValue = true;
 
             if ($nextChar === '"' || $nextChar === "'") {
@@ -148,14 +162,14 @@ class Parser
                     $cursor++;
                 }
 
-                $propStr = substr($rawValue, $valueStart, $cursor - $valueStart);
-                $propValue = $this->getAttributeValue($propStr);
+                $propValueRaw = substr($rawValue, $valueStart, $cursor - $valueStart);
+                $propValue = $this->getAttributeValue($propValueRaw);
             }
 
             $isBoolean = empty($propValue);
-            $isBinding = (substr($propName, 0, 1) === '[' && substr($propName, 0, -1) == ']') || str_contains($propValue, "{{");
+            $isBinding = (substr($propName, 0, 1) === '[' && substr($propName, 0, -1) == ']') || str_contains($propValueRaw, "{{");
 
-            $attributes[] = new AttributeNode($propName, $propValue, $isBoolean, $isBinding);
+            $attributes[] = new AttributeNode($propName, $propValue, $isBinding, $isBoolean);
             $cursor++;
         }
 
@@ -165,7 +179,7 @@ class Parser
     private function getAttributeValue(string $value)
     {
         if (strpos($value, '{{') === false) {
-            return var_export($value, true);
+            return $value;
         }
 
         $length = strlen($value);
@@ -232,6 +246,10 @@ class Parser
                 break;
             }
 
+            if ($token->type === TokenType::T_COMPONENT_SELF_CLOSE) {
+                break;
+            }
+
             $node = $this->parseNode();
             if ($node !== null) {
                 $children[] = $node;
@@ -258,13 +276,11 @@ class Parser
         $line = $token->line;
         $column = $token->column;
 
-        // Recupera as configurações dinâmicas da diretiva
         $config = $this->registry->get($directiveName);
-        $this->advance(); // Consome T_DIRECTIVE_NAME
+        $this->advance();
 
         $expression = null;
 
-        // 1. Processamento e Validação de Argumentos (...)
         if (!$this->isEOF() && $this->currentToken()->type === TokenType::T_DIRECTIVE_ARG) {
             $expression = $this->currentToken()->value;
             $this->advance();
@@ -274,10 +290,8 @@ class Parser
             );
         }
 
-        // Pula espaços e quebras de linha antes da abertura do bloco '{'
         $this->skipIgnorableTokens();
 
-        // 2. Processamento do Bloco de Conteúdo { ... }
         $children = [];
         if (!$this->isEOF() && $this->currentToken()->type === TokenType::T_BLOCK_OPEN) {
             $this->advance(); // Consome '{'
@@ -294,13 +308,10 @@ class Parser
             column: $column
         );
 
-        // Se o nó atual já for uma ramificação (@elseif, @else, @empty),
-        // encerra e devolve para ser encadeado no nó pai principal.
         if ($isBranch) {
             return $directiveNode;
         }
 
-        // 3. Processamento Linear de Ramificações no Nó Pai (@if, @for)
         while (!$this->isEOF()) {
             $this->skipIgnorableTokens();
 
@@ -355,9 +366,6 @@ class Parser
         return $children;
     }
 
-    /**
-     * Pula tokens de texto que contêm exclusivamente espaços em branco/quebras de linha.
-     */
     private function skipIgnorableTokens(): void
     {
         while (!$this->isEOF()) {

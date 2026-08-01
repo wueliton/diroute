@@ -18,8 +18,12 @@ class ComponentEmitter implements NodeEmitterInterface
         $selector = \addslashes($node->selector);
         $propsExport = [];
 
-        foreach ($node->props as $attr) {
-            $propsExport[] = "'{$attr->name}' => {$attr->value}";
+        foreach ($node->attributes as $attr) {
+            if ($attr->isBinding) {
+                $propsExport[] = "'{$attr->name}' => {$attr->value}";
+            } else {
+                $propsExport[] = "'{$attr->name}' => '{$attr->value}'";
+            }
         }
 
         $propsArrayString = '[' . implode(', ', $propsExport) . ']';

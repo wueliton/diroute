@@ -18,6 +18,7 @@ enum TokenType: string
     case T_COMPONENT_OPEN = 'T_COMPONENT_OPEN';
     case T_COMPONENT_PROPS = 'T_COMPONENT_PROPS';
     case T_COMPONENT_CLOSE = 'T_COMPONENT_CLOSE';
+    case T_COMPONENT_SELF_CLOSE = 'T_COMPONENT_SELF_CLOSE';
 
         // Fim do Arquivo
     case T_EOF = 'T_EOF';

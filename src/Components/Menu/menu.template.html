@@ -1,0 +1,7 @@
+<nav class="px-md py-md d-block">
+  <ul class="flex flex-row gap-lg">
+    @for($menuOptions as $link => $label) {
+    <li><a href="{{$link}}">{{$label}}</a></li>
+    }
+  </ul>
+</nav>

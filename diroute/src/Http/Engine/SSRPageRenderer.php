@@ -2,10 +2,8 @@
 
 namespace Diroute\Http\Engine;
 
-use Diroute\Cache\RenderCache;
-use Diroute\Compiler\CompilerEngine;
-use Diroute\Compiler\Runtime\ComponentSSRRenderer;
 use Diroute\Compiler\Runtime\TemplateRunner;
+use Diroute\CssEngine\CssCollector;
 use Diroute\Http\Context\ContextHydrator;
 use Diroute\Http\Router\RouteMatch;
 use RuntimeException;
@@ -15,7 +13,6 @@ class SSRPageRenderer
     private ContextHydrator $hydrator;
 
     public function __construct(
-        private readonly CompilerEngine $compiler,
         private readonly TemplateRunner $runner,
     ) {
         $this->hydrator = new ContextHydrator();
@@ -23,6 +20,8 @@ class SSRPageRenderer
 
     public function render(RouteMatch $match): string
     {
+        CssCollector::flush();
+
         if (!\file_exists($match->filePath)) {
             throw new RuntimeException("Arquivo '{$match->filePath}' não encontrado.");
         }
@@ -49,7 +48,7 @@ class SSRPageRenderer
         }
 
         // 4. Executa a página injetando o $componentRenderer para os componentes filhos
-        $html = $this->runner->run($templatePath, $pageScope);
+        $html = $this->runner->run($templatePath, $pageScope, injectCssIntoHtml: true);
 
         return $html;
     }

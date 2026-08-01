@@ -4,14 +4,11 @@ namespace Diroute\Compiler\Lexer;
 
 use Diroute\Compiler\Lexer\TemplateScanner;
 use Diroute\Compiler\Lexer\TokenType;
-use Diroute\Http\Registry\ComponentRegistry;
 
 class Lexer
 {
     /** @var Token[] */
     private array $tokens = [];
-
-    public function __construct(private ComponentRegistry $componentRegistry) {}
 
     public function tokenize(string $source): array
     {
@@ -80,8 +77,8 @@ class Lexer
 
         $scanner->advance(2);
 
-        $componentName = $scanner->consumeWhile(fn(string $ch) => ($ch >= 'a' && $ch <= 'z') || ($ch >= 'A' && $ch <= 'Z') || $ch === '-');
-        $isHTMLTag = $componentName === '' || !$this->componentRegistry->has($componentName);
+        $componentName = $scanner->consumeWhile(fn(string $ch) => ($ch >= 'a' && $ch <= 'z') || ($ch >= 'A' && $ch <= 'Z') || $ch === '-' || ($ch >= '0' && $ch <= '9'));
+        $isHTMLTag = $componentName === '';
 
         if ($isHTMLTag) {
             $this->tokens[] = new Token(TokenType::T_HTML, "</{$componentName}", $line, $col);
@@ -99,8 +96,8 @@ class Lexer
 
         $scanner->advance(1);
 
-        $componentName = $scanner->consumeWhile(fn(string $ch) => ($ch >= 'a' && $ch <= 'z') || ($ch >= 'A' && $ch <= 'Z') || $ch === '-');
-        $isHTMLTag = $componentName === '' || !$this->componentRegistry->has($componentName);
+        $componentName = $scanner->consumeWhile(fn(string $ch) => ($ch >= 'a' && $ch <= 'z') || ($ch >= 'A' && $ch <= 'Z') || $ch === '-' || ($ch >= '0' && $ch <= '9'));
+        $isHTMLTag = $componentName === '';
 
         if ($isHTMLTag) {
             $this->tokens[] = new Token(TokenType::T_HTML, "<{$componentName}", $line, $col);
@@ -165,11 +162,13 @@ class Lexer
 
     private function componentSelfClose(TemplateScanner $scanner, string $componentName)
     {
+        $scanner->skipWhitespace();
+
         if ($scanner->peek(2) === '/>') {
             $closeLine = $scanner->getLine();
             $closeCol = $scanner->getColumn();
             $scanner->advance(2);
-            $this->tokens[] = new Token(TokenType::T_COMPONENT_CLOSE, $componentName, $closeLine, $closeCol);
+            $this->tokens[] = new Token(TokenType::T_COMPONENT_SELF_CLOSE, $componentName, $closeLine, $closeCol);
             return;
         }
 

@@ -3,12 +3,13 @@
 namespace Diroute\Compiler\Parser\Node;
 
 use Diroute\Compiler\Contract\NodeInterface;
+use Diroute\Compiler\Parser\Node\AttributeNode;
 
 class ElementNode implements NodeInterface
 {
     /**
      * @param string $tagName ex: "div", "section"
-     * @param array<string, string> $attributes ex: ["class" => "btn", "id" => "main"]
+     * @param AttributeNode[] $attributes ex: ["class" => "btn", "id" => "main"]
      * @param NodeInterface[] $children
      */
     public function __construct(

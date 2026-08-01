@@ -9,12 +9,12 @@ class ComponentNode implements NodeInterface
 {
     /**
      * @param string $selector Nome do componente (ex: "app-button" ou "x-button")
-     * @param AttributeNode[] $props Propriedades passadas no componente
+     * @param AttributeNode[] $attributes Propriedades passadas no componente
      * @param NodeInterface[] $children Slot padrão / Conteúdo interno do componente
      */
     public function __construct(
         public string $selector,
-        public array $props = [],
+        public array $attributes = [],
         private array $children = [],
         public int $line = 1,
         public int $column = 1

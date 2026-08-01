@@ -6,11 +6,7 @@
     <title>{{$title}}</title>
   </head>
   <body>
-    <head>
-      <nav style="display: flex; gap: 16px">
-        <a href="/">Home</a><a href="/contact">Contato</a>
-      </nav>
-    </head>
-    {{$slot}}
+    <app-menu />
+    <div class="mx-auto px-md">{{$slot}}</div>
   </body>
 </html>

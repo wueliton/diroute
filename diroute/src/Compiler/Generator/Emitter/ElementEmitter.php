@@ -15,10 +15,13 @@ class ElementEmitter implements NodeEmitterInterface
             return;
         }
 
-        // Constrói atributos HTML caso existam
         $attributes = '';
-        foreach ($node->attributes as $key => $val) {
-            $attributes .= " {$key}=\"{$val}\"";
+        foreach ($node->attributes as $attr) {
+            if ($attr->isBinding) {
+                $attributes .= " {$attr->name}=\"<?= $attr->value ?>\"";
+            } else {
+                $attributes .= " {$attr->name}=\"{$attr->value}\"";
+            }
         }
 
         if ($node->isSelfClosing) {
@@ -29,7 +32,7 @@ class ElementEmitter implements NodeEmitterInterface
         $buffer->write("<{$node->tagName}{$attributes}>");
 
         foreach ($node->getChildren() as $child) {
-            $traverse($child);
+            $traverse($child, $buffer);
         }
 
         $buffer->write("</{$node->tagName}>");

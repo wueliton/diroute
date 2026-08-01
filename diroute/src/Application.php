@@ -6,6 +6,8 @@ use Diroute\Compiler\Cache\CompiledTemplateCache;
 use Diroute\Compiler\CompilerEngine;
 use Diroute\Compiler\Runtime\ComponentSSRRenderer;
 use Diroute\Compiler\Runtime\TemplateRunner;
+use Diroute\CssEngine\DirouteCssEngine;
+use Diroute\CssEngine\Parser\ClassScanner;
 use Diroute\Http\Engine\SSRPageRenderer;
 use Diroute\Http\Registry\ComponentRegistry;
 use Diroute\Http\Response\HtmlResponse;
@@ -50,15 +52,26 @@ class Application
         }
 
         // 2. Prepara a pipeline de compilação AST com os componentes globais
-        $compilerEngine = new CompilerEngine(componentRegistry: $this->componentRegistry, profiler: $this->profiler);
-        $templateCache = new CompiledTemplateCache(compiler: $compilerEngine, cacheDir: $this->cacheDir, profiler: $this->profiler);
-        $templateRunner = new TemplateRunner(templateCache: $templateCache, profiler: $this->profiler);
+        $cssEngine = new DirouteCssEngine();
+        $classScanner = new ClassScanner();
+        $compilerEngine = new CompilerEngine(
+            componentRegistry: $this->componentRegistry,
+            profiler: $this->profiler,
+            classScanner: $classScanner
+        );
+        $templateCache = new CompiledTemplateCache(
+            compiler: $compilerEngine,
+            cssEngine: $cssEngine,
+            cacheDir: $this->cacheDir,
+            profiler: $this->profiler,
+        );
+        $templateRunner = new TemplateRunner(templateCache: $templateCache, profiler: $this->profiler, cssEngine: $cssEngine);
         $componentRenderer = new ComponentSSRRenderer(
             $this->componentRegistry,
             $templateRunner
         );
         $templateRunner->setComponentRenderer($componentRenderer);
-        $this->renderer = new SSRPageRenderer($compilerEngine, $templateRunner);
+        $this->renderer = new SSRPageRenderer($templateRunner);
 
         // 3. A pipeline de renderização compila e gera o HTML
         $htmlOutput = $this->renderer->render($match);

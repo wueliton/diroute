@@ -3,12 +3,15 @@
 namespace Diroute\Compiler\Cache;
 
 use Diroute\Compiler\Contract\CompilerInterface;
+use Diroute\CssEngine\CssCollector;
+use Diroute\CssEngine\DirouteCssEngine;
 use Diroute\Profiler\Profiler;
 
 class CompiledTemplateCache
 {
     public function __construct(
         private CompilerInterface $compiler,
+        private DirouteCssEngine $cssEngine,
         private string $cacheDir,
         private bool $autoReload = true, // true em Dev, false em Produção (Twig style)
         private ?Profiler $profiler = null
@@ -20,22 +23,27 @@ class CompiledTemplateCache
      * Retorna o caminho do arquivo compilado pronto para execução.
      * Se não existir ou estiver desatualizado, compila e salva no disco.
      */
-    public function getOrCompile(string $templatePath): string
+    public function getOrCompile(string $templatePath): array
     {
         $profiler = $this->profiler ?? new Profiler();
 
         return $profiler->profile('Cache: Resolution & Validation', function () use ($templatePath) {
             $className = 'DirouteTemplate_' . md5($templatePath);
             $compiledFilePath = "{$this->cacheDir}/{$className}.php";
+            $compiledCssFilePath = "{$this->cacheDir}/{$className}.css";
 
             // 1. CHECAGEM DE VALIDADE DO CACHE
-            if ($this->isCacheValid($templatePath, $compiledFilePath)) {
-                return $compiledFilePath;
-            }
+            // if ($this->isCacheValid($templatePath, $compiledFilePath) && $this->isCacheValid($templatePath, $compiledCssFilePath)) {
+            //     return [
+            //         'php_file' => $compiledFilePath,
+            //         'css_content' => file_get_contents($compiledCssFilePath)
+            //     ];
+            // }
 
             // 2. CACHE MISS: Lê o arquivo fonte e chama a sua CompilerInterface
             $source = file_get_contents($templatePath);
-            $phpBody = $this->compiler->compile($source);
+            $ast = $this->compiler->parseToAst($source);
+            $phpBody = $this->compiler->generateCodeFromAst($ast);
 
             // 3. Encapsula o PHP gerado dentro da estrutura de classe estática
             $fullPhpCode = $this->wrapInClass($className, $phpBody);
@@ -43,7 +51,14 @@ class CompiledTemplateCache
             // 4. Salva no disco de forma atômica
             $this->storeInCache($compiledFilePath, $fullPhpCode);
 
-            return $compiledFilePath;
+            $uniqueClasses = CssCollector::getUniqueClasses();
+            $this->cssEngine->processClasses($uniqueClasses);
+            $cssOutput = $this->cssEngine->buildCssFile($compiledCssFilePath);
+
+            return [
+                'php_file' => $compiledFilePath,
+                'css_content' => $cssOutput['cssContent']
+            ];
         });
     }
 

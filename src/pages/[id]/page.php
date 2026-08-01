@@ -7,7 +7,7 @@ use Diroute\Http\Attribute\Page;
     description: 'Exemplo de página',
     template: 'example.template.html',
 )]
-class ExamplePage
+class ProductIdPage
 {
     public array $users = [];
 }
