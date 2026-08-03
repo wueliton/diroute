@@ -2,3 +2,4 @@
 /var/cache/
 .DS_Store
 *.log
+.temp/
