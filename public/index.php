@@ -14,3 +14,5 @@ $app = new Application(dirname(__DIR__, 1) . "/src/pages", $profiler)
     ->handle($_SERVER['REQUEST_URI']);
 
 $app->send();
+
+echo $profiler->renderHtmlSummary();

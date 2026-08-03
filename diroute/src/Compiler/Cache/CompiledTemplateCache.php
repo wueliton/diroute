@@ -33,12 +33,13 @@ class CompiledTemplateCache
             $compiledCssFilePath = "{$this->cacheDir}/{$className}.css";
 
             // 1. CHECAGEM DE VALIDADE DO CACHE
-            // if ($this->isCacheValid($templatePath, $compiledFilePath) && $this->isCacheValid($templatePath, $compiledCssFilePath)) {
-            //     return [
-            //         'php_file' => $compiledFilePath,
-            //         'css_content' => file_get_contents($compiledCssFilePath)
-            //     ];
-            // }
+            if ($this->isCacheValid($templatePath, $compiledFilePath) && $this->isCacheValid($templatePath, $compiledCssFilePath)) {
+                return [
+                    'php_file' => $compiledFilePath,
+                    'css_file' => $compiledCssFilePath,
+                    'css_content' => file_get_contents($compiledCssFilePath)
+                ];
+            }
 
             // 2. CACHE MISS: Lê o arquivo fonte e chama a sua CompilerInterface
             $source = file_get_contents($templatePath);
@@ -57,6 +58,7 @@ class CompiledTemplateCache
 
             return [
                 'php_file' => $compiledFilePath,
+                'css_file' => $compiledCssFilePath,
                 'css_content' => $cssOutput['cssContent']
             ];
         });
@@ -104,5 +106,13 @@ PHP;
         $tmpFile = tempnam($this->cacheDir, 'tmp_');
         file_put_contents($tmpFile, $content, LOCK_EX);
         rename($tmpFile, $filePath);
+    }
+
+    public function persist(string $fileName, string $content): string
+    {
+        $filePath = "{$this->cacheDir}/{$fileName}";
+        $this->storeInCache($filePath, $content);
+
+        return $filePath;
     }
 }
